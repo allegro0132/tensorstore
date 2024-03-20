@@ -59,7 +59,7 @@ BAZEL_GCS_PATH_PATTERN = (
     "https://storage.googleapis.com/bazel-builds/artifacts/{platform}/{commit}/bazel"
 )
 
-SUPPORTED_PLATFORMS = {"linux": "ubuntu1404", "windows": "windows", "darwin": "macos"}
+SUPPORTED_PLATFORMS = {"linux": "ubuntu1404", "windows": "windows", "darwin": "macos", "ppc64le": "ppc64le"}
 
 TOOLS_BAZEL_PATH = "./tools/bazel"
 
@@ -244,6 +244,11 @@ def get_supported_machine_archs(version, operating_system):
             # Linux arm64 was supported since 3.4.0.
             # Darwin arm64 was supported since 4.1.0.
             supported_machines.append("arm64")
+        if (
+            operating_system == "linux" and (major >= 6)
+        ):
+            # Linux ppc64le was supported since 6.0.0.
+            supported_machines.append("ppc64le")
     elif operating_system in ("darwin", "linux"):
         # This is needed to run bazelisk_test.sh on Linux and Darwin arm64 machines, which are
         # becoming more and more popular.
@@ -251,6 +256,7 @@ def get_supported_machine_archs(version, operating_system):
         # However, this would add arm64 by mistake if the commit is too old, which should be
         # a rare scenario.
         supported_machines.append("arm64")
+        supported_machines.append("ppc64le")
     return supported_machines
 
 
@@ -274,7 +280,8 @@ def determine_url(version, is_commit, bazel_filename):
     # Split version into base version and optional additional identifier.
     # Example: '0.19.1' -> ('0.19.1', None), '0.20.0rc1' -> ('0.20.0', 'rc1')
     (version, rc) = re.match(r"(\d*\.\d*(?:\.\d*)?)(rc\d+)?", version).groups()
-
+    # hack for ppc64le
+    return "https://ftp2.osuosl.org/pub/ppc64el/bazel/ubuntu_20.04/bazel-6.1.2"
     if "BAZELISK_BASE_URL" in os.environ:
         return "{}/{}/{}".format(os.environ["BAZELISK_BASE_URL"], version, bazel_filename)
     else:
@@ -300,6 +307,7 @@ def download_bazel_into_directory(version, is_commit, directory):
     maybe_makedirs(destination_dir)
 
     destination_path = os.path.join(destination_dir, "bazel" + filename_suffix)
+    print(destination_path)
     if not os.path.exists(destination_path):
         download(bazel_url, destination_path)
         os.chmod(destination_path, 0o755)
